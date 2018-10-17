@@ -8,16 +8,16 @@ build:
 	GOOS=linux CGO_ENABLED=0 go build -o ./bin/tke-bridge-agent -ldflags "$(LDFLAGS)" ./cmd/
 
 docker-build:
-	docker run --rm -v $(shell pwd):/go/src/git.code.oa.com/tke/cni-bridge-agent \
-		--workdir=/go/src/git.code.oa.com/tke/cni-bridge-agent \
+	docker run --rm -v $(shell pwd):/go/src/git.code.oa.com/tke/tke-bridge-agent \
+		--workdir=/go/src/git.code.oa.com/tke/tke-bridge-agent \
 		golang:1.10 make build
 
 docker: docker-build
-	@docker build -f scripts/Dockerfile.agent -t "ccr.ccs.tencentyun.com/tke-cni/cni-bridge-agent:$(VERSION)" .
-	@echo "Built Docker image \"ccr.ccs.tencentyun.com/tke-cni/cni-bridge-agent:$(VERSION)\""
+	@docker build -f scripts/Dockerfile.agent -t "ccr.ccs.tencentyun.com/tke-cni/tke-bridge-agent:$(VERSION)" .
+	@echo "Built Docker image \"ccr.ccs.tencentyun.com/tke-cni/tke-bridge-agent:$(VERSION)\""
 
 push: docker
-	docker push "ccr.ccs.tencentyun.com/tke-cni/cni-bridge-agent:$(VERSION)"
+	docker push "ccr.ccs.tencentyun.com/tke-cni/tke-bridge-agent:$(VERSION)"
 
 clean:
 	rm -rf bin
