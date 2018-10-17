@@ -12,11 +12,11 @@ docker-build:
 		--workdir=/go/src/git.code.oa.com/tke/cni-bridge-agent \
 		golang:1.10 make build
 
-docker:
+docker: docker-build
 	@docker build -f scripts/Dockerfile.agent -t "ccr.ccs.tencentyun.com/tke-cni/cni-bridge-agent:$(VERSION)" .
 	@echo "Built Docker image \"ccr.ccs.tencentyun.com/tke-cni/cni-bridge-agent:$(VERSION)\""
 
-push:
+push: docker
 	docker push "ccr.ccs.tencentyun.com/tke-cni/cni-bridge-agent:$(VERSION)"
 
 clean:
