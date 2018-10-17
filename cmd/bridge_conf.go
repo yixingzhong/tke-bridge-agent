@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"path"
 	"io/ioutil"
+
+	"github.com/containernetworking/plugins/pkg/ip"
 )
 
 const (
@@ -34,8 +36,9 @@ const NET_CONFIG_TEMPLATE = `{
 
 func generateBridgeConf(cidr *net.IPNet, mtu int, hairpinMode bool) error {
 	subnet := cidr.String()
-	cidr.IP[len(cidr.IP)-1] += 1
-	gw := cidr.String()
+
+	ipn := cidr.IP.Mask(cidr.Mask)
+	gw := ip.NextIP(ipn).String()
 	cniConf := fmt.Sprintf(NET_CONFIG_TEMPLATE, mtu, hairpinMode, subnet, gw)
 	fileName := fmt.Sprintf("%s.conf", pluginName)
 	return ioutil.WriteFile(path.Join(DefaultCniConfDir, fileName), []byte(cniConf), 0644)

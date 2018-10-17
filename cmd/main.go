@@ -73,6 +73,8 @@ func main() {
 			if sync := WaitForCacheSync("node", stopChan, nodeController.HasSynced); !sync {
 				log.Fatalf("local node cache not sync")
 			}
+
+			<- stopChan
 		},
 	}
 	o.AddFlags(cmd.Flags())
