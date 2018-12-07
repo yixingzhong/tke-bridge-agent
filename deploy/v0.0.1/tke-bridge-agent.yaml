@@ -51,7 +51,7 @@ spec:
       serviceAccountName: tke-bridge-agent
       hostNetwork: true
       containers:
-      - image: ccr.ccs.tencentyun.com/tke-cni/tke-bridge-agent:v0.1
+      - image: ccr.ccs.tencentyun.com/tke-cni/tke-bridge-agent:v0.0.1
         imagePullPolicy: Always
         env:
         - name: MY_NODE_NAME
