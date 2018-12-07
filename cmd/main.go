@@ -1,16 +1,16 @@
 package main
 
 import (
-	"time"
-	"math/rand"
 	goflag "flag"
-	"os"
+	"math/rand"
 	"net"
+	"os"
+	"time"
 
-	"github.com/spf13/pflag"
-	"github.com/spf13/cobra"
 	log "github.com/golang/glog"
 	"github.com/hasura/gitkube/pkg/signals"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,9 +29,13 @@ func main() {
 
 	o := NewOptions()
 	cmd := &cobra.Command{
-		Use: "tke-cni-bridge",
+		Use:  "tke-cni-bridge",
 		Long: `The tke-cni-bridge is a daemon watch node's pod cidr changes.`,
 		Run: func(cmd *cobra.Command, args []string) {
+			err := o.Config()
+			if err != nil {
+				log.Fatalf("Failed to config agent options, error %v", err)
+			}
 			log.Infof("Start tke cni bridge")
 			nodeName := os.Getenv("MY_NODE_NAME")
 			if nodeName == "" {
@@ -74,7 +78,9 @@ func main() {
 				log.Fatalf("local node cache not sync")
 			}
 
-			<- stopChan
+			// TODO set net.bridge.bridge-nf-call-iptables=1
+
+			<-stopChan
 		},
 	}
 	o.AddFlags(cmd.Flags())
@@ -88,7 +94,7 @@ func main() {
 	log.Infof("Start agent ...")
 
 	if err := cmd.Execute(); err != nil {
-		log.Fatalf( "Failed to start agent, error %v", err)
+		log.Fatalf("Failed to start agent, error %v", err)
 	}
 }
 
@@ -105,5 +111,6 @@ func syncPodCidr(podCidr string, o *Options) error {
 	if err != nil {
 		return err
 	}
+
 	return ensureRule(cidr)
 }
