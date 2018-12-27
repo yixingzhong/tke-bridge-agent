@@ -4,12 +4,13 @@ import (
 	"net"
 	"syscall"
 
+	log "github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 )
 
 const (
-	mainRouteTable = 254
+	mainRouteTable   = 254
 	cidrRulePriority = 1024
 )
 
@@ -21,6 +22,8 @@ func containsNoSuchRule(err error) bool {
 }
 
 func ensureRule(cidr *net.IPNet) error {
+	log.Infof("Ensure rule %+v", cidr)
+
 	err := clearPreviousRule()
 	if err != nil {
 		return err
@@ -33,7 +36,7 @@ func ensureRule(cidr *net.IPNet) error {
 
 	err = netlink.RuleAdd(rule)
 	if err != nil {
-		return errors.Wrapf(err, "add cidr rule: failed to add rule for %v", *cidr)
+		return errors.Wrapf(err, "add cidr rule: failed to add rule for %+v", cidr)
 	}
 	return nil
 }
@@ -45,7 +48,7 @@ func clearPreviousRule() error {
 
 	err := netlink.RuleDel(rule)
 	if err != nil && !containsNoSuchRule(err) {
-		return errors.Wrapf(err, "clear previous rule: failed to delete old rule",)
+		return errors.Wrapf(err, "clear previous rule: failed to delete old rule")
 	}
 	return nil
 }

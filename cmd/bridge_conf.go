@@ -85,6 +85,8 @@ func generateBridgeConf(cidr *net.IPNet, mtu int, hairpinMode string) error {
 
 	cniConf := fmt.Sprintf(NET_CONFIG_TEMPLATE, BridgeName, iMtu, bHairpinMode, bPromiscMode, subnet, gw)
 	fileName := fmt.Sprintf("%s.conf", pluginName)
+	log.Infof("Generate bridge conf %s : %s", fileName, cniConf)
+
 	return ioutil.WriteFile(path.Join(DefaultCniConfDir, fileName), []byte(cniConf), 0644)
 }
 

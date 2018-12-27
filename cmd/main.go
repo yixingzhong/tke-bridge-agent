@@ -32,10 +32,12 @@ func main() {
 		Use:  "tke-cni-bridge",
 		Long: `The tke-cni-bridge is a daemon watch node's pod cidr changes.`,
 		Run: func(cmd *cobra.Command, args []string) {
+			log.Infof("Config agent options")
 			err := o.Config()
 			if err != nil {
 				log.Fatalf("Failed to config agent options, error %v", err)
 			}
+
 			log.Infof("Start tke cni bridge")
 			nodeName := os.Getenv("MY_NODE_NAME")
 			if nodeName == "" {
@@ -52,6 +54,7 @@ func main() {
 				log.Fatalf("Failed to new kube client, error %v", err)
 			}
 
+			log.Infof("Run node controller")
 			fieldSelector := fields.OneTermEqualSelector(ObjectNameField, nodeName)
 			nodeLW := cache.NewListWatchFromClient(client.CoreV1().RESTClient(), "nodes", metav1.NamespaceAll, fieldSelector)
 			_, nodeController := cache.NewIndexerInformer(nodeLW, &v1.Node{}, 0, cache.ResourceEventHandlerFuncs{
@@ -83,12 +86,14 @@ func main() {
 			<-stopChan
 		},
 	}
+	cmd.Flags().AddGoFlagSet(goflag.CommandLine)
+	cmd.Flags().Lookup("logtostderr").Value.Set("true")
 	o.AddFlags(cmd.Flags())
+	cmd.Flags().Parse(os.Args[1:])
 
-	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
-	pflag.Lookup("logtostderr").Value.Set("true")
-
-	goflag.Parse()
+	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+		log.Infof("FLAG: --%s=%q", flag.Name, flag.Value)
+	})
 
 	defer log.Flush()
 	log.Infof("Start agent ...")
@@ -99,18 +104,33 @@ func main() {
 }
 
 func syncPodCidr(podCidr string, o *Options) error {
+	log.Infof("Sync pod cidr %s", podCidr)
 	if podCidr == "" {
 		log.Warningf("node has no pod cidr assigned, skipped")
 		return nil
 	}
 	_, cidr, err := net.ParseCIDR(podCidr)
 	if err != nil {
+		log.Errorf("Failed to parse cidr %s : %v", podCidr, err)
 		return err
 	}
 	err = generateBridgeConf(cidr, o.MTU, o.HairpinMode)
 	if err != nil {
+		log.Errorf("Failed to generate bridge conf : %v", err)
 		return err
 	}
 
-	return ensureRule(cidr)
+	if o.AddRule {
+		if cidr.IP.IsLoopback() {
+			log.Warningf("loopback cidr %+v, skipping add rule", cidr)
+		} else {
+			err = ensureRule(cidr)
+			if err != nil {
+				log.Errorf("Failed to ensure rule %+v : %v", cidr, err)
+				return err
+			}
+		}
+	}
+
+	return nil
 }
