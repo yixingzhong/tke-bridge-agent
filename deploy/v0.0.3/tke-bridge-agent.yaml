@@ -1,0 +1,77 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+# kubernetes versions before 1.8.0 should use rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: tke-bridge-agent
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  verbs: ["list", "watch", "get"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tke-bridge-agent
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+# kubernetes versions before 1.8.0 should use rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: tke-bridge-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tke-bridge-agent
+subjects:
+- kind: ServiceAccount
+  name: tke-bridge-agent
+  namespace: kube-system
+---
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: tke-bridge-agent
+  namespace: kube-system
+  labels:
+    k8s-app: tke-bridge-agent
+spec:
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      k8s-app: tke-bridge-agent
+  template:
+    metadata:
+      labels:
+        k8s-app: tke-bridge-agent
+    spec:
+      serviceAccountName: tke-bridge-agent
+      hostNetwork: true
+      containers:
+      - image: ccr.ccs.tencentyun.com/tke-cni/tke-bridge-agent:v0.0.3
+        imagePullPolicy: Always
+        env:
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        name: tke-bridge-agent
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /host/opt/cni/bin
+          name: cni-bin-dir
+        - mountPath: /host/etc/cni/net.d
+          name: cni-net-dir
+      volumes:
+      - name: cni-bin-dir
+        hostPath:
+          path: /opt/cni/bin
+      - name: cni-net-dir
+        hostPath:
+          path: /etc/cni/net.d
+
+
