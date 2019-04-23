@@ -2,9 +2,12 @@ package main
 
 import (
 	goflag "flag"
+	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
+	"os/exec"
 	"time"
 
 	log "github.com/golang/glog"
@@ -39,6 +42,11 @@ func main() {
 			}
 
 			log.Infof("Start tke cni bridge")
+			err = ensureBridgeNFCallIptables()
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			nodeName := os.Getenv("MY_NODE_NAME")
 			if nodeName == "" {
 				log.Fatalf("Failed to get node name from env")
@@ -80,8 +88,6 @@ func main() {
 			if sync := WaitForCacheSync("node", stopChan, nodeController.HasSynced); !sync {
 				log.Fatalf("local node cache not sync")
 			}
-
-			// TODO set net.bridge.bridge-nf-call-iptables=1
 
 			<-stopChan
 		},
@@ -132,5 +138,20 @@ func syncPodCidr(podCidr string, o *Options) error {
 		}
 	}
 
+	return nil
+}
+
+func ensureBridgeNFCallIptables() error {
+	// set net.bridge.bridge-nf-call-iptables=1
+	command := exec.Command("modprobe", "br-netfilter")
+	out, err := command.CombinedOutput()
+	if err != nil {
+		log.Warningf("failed to modprobe br-netfilter, error %v, output %s", err, string(out))
+	}
+
+	err = ioutil.WriteFile("/proc/sys/net/bridge/bridge-nf-call-iptables", []byte("1"), 0640)
+	if err != nil {
+		return fmt.Errorf("failed to set bridge-nf-call-iptables, error %v", err)
+	}
 	return nil
 }
