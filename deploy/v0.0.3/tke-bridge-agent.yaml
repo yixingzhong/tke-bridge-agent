@@ -50,6 +50,12 @@ spec:
     spec:
       serviceAccountName: tke-bridge-agent
       hostNetwork: true
+      terminationGracePeriodSeconds: 0
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+        - effect: NoSchedule
+          key: node.kubernetes.io/not-ready
       containers:
       - image: ccr.ccs.tencentyun.com/tke-cni/tke-bridge-agent:v0.0.3
         imagePullPolicy: Always
@@ -66,6 +72,8 @@ spec:
           name: cni-bin-dir
         - mountPath: /host/etc/cni/net.d
           name: cni-net-dir
+        - mountPath: /lib/modules
+          name: modules-dir
       volumes:
       - name: cni-bin-dir
         hostPath:
@@ -73,5 +81,10 @@ spec:
       - name: cni-net-dir
         hostPath:
           path: /etc/cni/net.d
+      - name: modules-dir
+        hostPath:
+          path: /lib/modules
+
+
 
 
