@@ -24,31 +24,44 @@ func containsNoSuchRule(err error) bool {
 func ensureRule(cidr *net.IPNet) error {
 	log.Infof("Ensure rule %+v", cidr)
 
-	err := clearPreviousRule()
+	rules, err := netlink.RuleList(netlink.FAMILY_V4)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to list rule")
 	}
 
-	rule := netlink.NewRule()
-	rule.Dst = cidr
-	rule.Table = mainRouteTable
-	rule.Priority = cidrRulePriority
-
-	err = netlink.RuleAdd(rule)
-	if err != nil {
-		return errors.Wrapf(err, "add cidr rule: failed to add rule for %+v", cidr)
+	cidrStr := cidr.String()
+	var found bool
+	for _, rule := range rules {
+		// only care rule pref == 1024
+		if rule.Priority != cidrRulePriority {
+			continue
+		}
+		if rule.Dst == nil {
+			continue
+		}
+		if rule.Dst.String() != cidrStr {
+			log.Infof("Clear extra rule (from %v to %v table %d)", rule.Src, rule.Dst, rule.Table)
+			// clear extra rule
+			err := netlink.RuleDel(&rule)
+			if err != nil && !containsNoSuchRule(err) {
+				return errors.Wrapf(err, "clear extra rule: failed to delete old rule %v", rule)
+			}
+		} else {
+			log.Infof("skip add rule (from %v to %v table %d), same rule already exist", rule.Src, rule.Dst, rule.Table)
+			found = true
+		}
 	}
-	return nil
-}
 
-func clearPreviousRule() error {
-	rule := netlink.NewRule()
-	rule.Table = mainRouteTable
-	rule.Priority = cidrRulePriority
+	if !found {
+		rule := netlink.NewRule()
+		rule.Dst = cidr
+		rule.Table = mainRouteTable
+		rule.Priority = cidrRulePriority
 
-	err := netlink.RuleDel(rule)
-	if err != nil && !containsNoSuchRule(err) {
-		return errors.Wrapf(err, "clear previous rule: failed to delete old rule")
+		err = netlink.RuleAdd(rule)
+		if err != nil {
+			return errors.Wrapf(err, "add cidr rule: failed to add rule for %v", cidr)
+		}
 	}
 	return nil
 }
