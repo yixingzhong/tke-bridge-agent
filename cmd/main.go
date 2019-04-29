@@ -120,7 +120,7 @@ func syncPodCidr(podCidr string, o *Options) error {
 		log.Errorf("Failed to parse cidr %s : %v", podCidr, err)
 		return err
 	}
-	err = generateBridgeConf(cidr, o.MTU, o.HairpinMode)
+	err = generateBridgeConf(cidr, o.MTU, o.HairpinMode, o.CniConfDir)
 	if err != nil {
 		log.Errorf("Failed to generate bridge conf : %v", err)
 		return err

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"os"
 	"path"
 
 	"github.com/containernetworking/plugins/pkg/ip"
@@ -11,9 +12,9 @@ import (
 )
 
 const (
-	DefaultCniConfDir = "/host/etc/cni/net.d"
+	defaultCniConfDir = "/host/etc/cni/net.d"
 	pluginName        = "tke-bridge"
-	BridgeName        = "cbr0"
+	bridgeName        = "cbr0"
 )
 
 const NET_CONFIG_TEMPLATE = `{
@@ -52,7 +53,7 @@ const (
 	HairpinNone = "none"
 )
 
-func generateBridgeConf(cidr *net.IPNet, mtu int, hairpinMode string) error {
+func generateBridgeConf(cidr *net.IPNet, mtu int, hairpinMode string, confDir string) error {
 	subnet := cidr.String()
 	ipn := cidr.IP.Mask(cidr.Mask)
 	gw := ip.NextIP(ipn).String()
@@ -83,11 +84,17 @@ func generateBridgeConf(cidr *net.IPNet, mtu int, hairpinMode string) error {
 		bPromiscMode = false
 	}
 
-	cniConf := fmt.Sprintf(NET_CONFIG_TEMPLATE, BridgeName, iMtu, bHairpinMode, bPromiscMode, subnet, gw)
+	cniConf := fmt.Sprintf(NET_CONFIG_TEMPLATE, bridgeName, iMtu, bHairpinMode, bPromiscMode, subnet, gw)
 	fileName := fmt.Sprintf("%s.conf", pluginName)
 	log.Infof("Generate bridge conf %s : %s", fileName, cniConf)
 
-	return ioutil.WriteFile(path.Join(DefaultCniConfDir, fileName), []byte(cniConf), 0644)
+	if _, err := os.Stat(confDir); os.IsNotExist(err) {
+		if err1 := os.Mkdir(confDir, 0755); err1 != nil {
+			return err1
+		}
+	}
+
+	return ioutil.WriteFile(path.Join(confDir, fileName), []byte(cniConf), 0644)
 }
 
 func findMinMTU() (*net.Interface, error) {
@@ -108,7 +115,7 @@ func findMinMTU() (*net.Interface, error) {
 	}
 
 	if mtu >= 999999 || mtu < 576 || defIntfIndex < 0 {
-		return nil, fmt.Errorf("no suitable interface: %v", BridgeName)
+		return nil, fmt.Errorf("no suitable interface: %v", bridgeName)
 	}
 
 	return &intfs[defIntfIndex], nil
