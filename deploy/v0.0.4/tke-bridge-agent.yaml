@@ -56,7 +56,7 @@ spec:
           key: node-role.kubernetes.io/master
       containers:
       - image: ccr.ccs.tencentyun.com/tkeimages/tke-bridge-agent:v0.0.4
-        args: ["--conf-dir", "/host/etc/cni/net.d/multus"]
+        args: ["--cni-conf-dir", "/host/etc/cni/net.d/multus"]
         imagePullPolicy: Always
         env:
         - name: MY_NODE_NAME
