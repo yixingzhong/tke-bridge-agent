@@ -27,20 +27,20 @@ kubectl create -f https://raw.githubusercontent.com/qyzhaoxun/tke-bridge-agent/m
 * `make push` 会推送 `tke-bridge-agent` 镜像，镜像 tag 取自 `git describe --tags --always --dirty`。
 
 ### 运行参数
-`--mtu`
-含义：显示指定 MTU 大小。
-默认：0，节点已有网卡 MTU 最小值。
-变更风险：不会影响已有网卡。
-示例：`--mtu=1500`
+`--mtu`  
+含义：显示指定 MTU 大小。  
+默认：0，节点已有网卡 MTU 最小值。  
+变更风险：不会影响已有网卡。  
+示例：`--mtu=1500`。  
 
-`--add-rule`
-含义：是否添加策略路由 (`from all to <subnet> lookup main pref 1024`)。
-默认：添加。
-变更风险：***如果节点运行了 tke-route-eni 类型 Pod，可能会导致 tke-route-eni 类型 Pod 和 tke-bridge 类型 Pod 互访失败。***
-示例：`--add-rule`
+`--add-rule`  
+含义：是否添加策略路由 (`from all to <subnet> lookup main pref 1024`)。  
+默认：添加。  
+变更风险：***如果节点运行了 tke-route-eni 类型 Pod，可能会导致 tke-route-eni 类型 Pod 和 tke-bridge 类型 Pod 互访失败。***  
+示例：`--add-rule`。  
 
-`--cni-conf-dir`
-含义：指定生成 tke-bridge.conf 配置路径。
-默认：Pod`/host/etc/cni/net.d/multus`路径，对应节点`/etc/cni/net.d/multus`
-变更风险：确保能被加载到。
-示例：`--cni-conf-dir=/host/etc/cni/net.d/multus`
+`--cni-conf-dir`  
+含义：指定生成 tke-bridge.conf 配置路径。  
+默认：Pod`/host/etc/cni/net.d/multus`路径，对应节点`/etc/cni/net.d/multus`。  
+变更风险：确保能被加载到。  
+示例：`--cni-conf-dir=/host/etc/cni/net.d/multus`。  
