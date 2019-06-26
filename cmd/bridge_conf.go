@@ -18,25 +18,39 @@ const (
 )
 
 const NET_CONFIG_TEMPLATE = `{
-  "cniVersion": "0.1.0",
+  "cniVersion": "0.3.1",
   "name": "tke-bridge",
-  "type": "bridge",
-  "bridge": "%s",
-  "mtu": %d,
-  "addIf": "eth0",
-  "isGateway": true,
-  "forceAddress": true,
-  "ipMasq": false,
-  "hairpinMode": %t,
-  "promiscMode": %t,
-  "ipam": {
-    "type": "host-local",
-    "subnet": "%s",
-    "gateway": "%s",
-    "routes": [
-      { "dst": "0.0.0.0/0" }
-    ]
-  }
+  "plugins": [
+    {
+      "cniVersion": "0.1.0",
+      "type": "bridge",
+      "bridge": "%s",
+      "mtu": %d,
+      "addIf": "eth0",
+      "isGateway": true,
+      "forceAddress": true,
+      "ipMasq": false,
+      "hairpinMode": %t,
+      "promiscMode": %t,
+      "ipam": {
+        "type": "host-local",
+        "subnet": "%s",
+        "gateway": "%s",
+        "routes": [
+          {
+            "dst": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    {
+      "type": "portmap",
+      "capabilities": {
+        "portMappings": true
+      },
+      "externalSetMarkChain": "KUBE-MARK-MASQ"
+    }
+  ]
 }`
 
 // Enum settings for different ways to handle hairpin packets.
@@ -85,7 +99,7 @@ func generateBridgeConf(cidr *net.IPNet, mtu int, hairpinMode string, confDir st
 	}
 
 	cniConf := fmt.Sprintf(NET_CONFIG_TEMPLATE, bridgeName, iMtu, bHairpinMode, bPromiscMode, subnet, gw)
-	fileName := fmt.Sprintf("%s.conf", pluginName)
+	fileName := fmt.Sprintf("20-%s.conflist", pluginName)
 	log.Infof("Generate bridge conf %s : %s", fileName, cniConf)
 
 	if _, err := os.Stat(confDir); os.IsNotExist(err) {
