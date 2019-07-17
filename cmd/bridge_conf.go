@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/containernetworking/plugins/pkg/ip"
 	log "github.com/golang/glog"
@@ -17,12 +18,17 @@ const (
 	bridgeName        = "cbr0"
 )
 
-const NET_CONFIG_TEMPLATE = `{
+const NetConfTemplateBegin = `{
   "cniVersion": "0.3.1",
   "name": "tke-bridge",
-  "plugins": [
+  "plugins": [`
+
+const NetConfTemplateEnd = `
+  ]
+}`
+
+const BridgeConf = `
     {
-      "cniVersion": "0.1.0",
       "type": "bridge",
       "bridge": "%s",
       "mtu": %d,
@@ -42,16 +48,24 @@ const NET_CONFIG_TEMPLATE = `{
           }
         ]
       }
-    },
+    }`
+
+const PortMappingConf = `
     {
       "type": "portmap",
       "capabilities": {
         "portMappings": true
       },
       "externalSetMarkChain": "KUBE-MARK-MASQ"
-    }
-  ]
-}`
+    }`
+
+const BandwidthConf = `
+    {
+      "type": "bandwidth",
+      "capabilities": {
+        "bandwidth": true
+      }
+    }`
 
 // Enum settings for different ways to handle hairpin packets.
 const (
@@ -67,7 +81,7 @@ const (
 	HairpinNone = "none"
 )
 
-func generateBridgeConf(cidr *net.IPNet, mtu int, hairpinMode string, confDir string) error {
+func generateBridgeConf(cidr *net.IPNet, mtu int, hairpinMode string, confDir string, portmapping bool, bandwidth bool) error {
 	subnet := cidr.String()
 	ipn := cidr.IP.Mask(cidr.Mask)
 	gw := ip.NextIP(ipn).String()
@@ -98,7 +112,16 @@ func generateBridgeConf(cidr *net.IPNet, mtu int, hairpinMode string, confDir st
 		bPromiscMode = false
 	}
 
-	cniConf := fmt.Sprintf(NET_CONFIG_TEMPLATE, bridgeName, iMtu, bHairpinMode, bPromiscMode, subnet, gw)
+	var confList []string
+	bridgeConf := fmt.Sprintf(BridgeConf, bridgeName, iMtu, bHairpinMode, bPromiscMode, subnet, gw)
+	confList = append(confList, bridgeConf)
+	if bandwidth {
+		confList = append(confList, BandwidthConf)
+	}
+	if portmapping {
+		confList = append(confList, PortMappingConf)
+	}
+	cniConf := NetConfTemplateBegin + strings.Join(confList, ",") + NetConfTemplateEnd
 	fileName := fmt.Sprintf("20-%s.conflist", pluginName)
 	log.Infof("Generate bridge conf %s : %s", fileName, cniConf)
 
