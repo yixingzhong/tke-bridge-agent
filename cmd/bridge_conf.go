@@ -20,7 +20,8 @@ const (
 const NET_CONFIG_TEMPLATE = `{
   "cniVersion": "0.1.0",
   "name": "tke-bridge",
-  "type": "bridge",
+  "type": "tke-route-eni",
+  "routeTable": -1,
   "bridge": "%s",
   "mtu": %d,
   "addIf": "eth0",
