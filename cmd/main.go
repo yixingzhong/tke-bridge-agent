@@ -3,6 +3,7 @@ package main
 import (
 	goflag "flag"
 	"fmt"
+	"github.com/qyzhaoxun/tke-bridge-agent/reconciler"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -82,8 +83,10 @@ func main() {
 			}, cache.Indexers{})
 
 			stopChan := signals.SetupSignalHandler()
+			cniReconciler := reconciler.New(o.AllocateInfoPath)
 
 			go nodeController.Run(stopChan)
+			go cniReconciler.Run(stopChan)
 
 			if sync := WaitForCacheSync("node", stopChan, nodeController.HasSynced); !sync {
 				log.Fatalf("local node cache not sync")
