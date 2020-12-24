@@ -6,22 +6,24 @@ import (
 )
 
 type Options struct {
-	MTU         int
-	HairpinMode string
-	AddRule     bool
-	CniConfDir  string
-	PortMapping bool
-	Bandwidth   bool
+	MTU              int
+	HairpinMode      string
+	AddRule          bool
+	CniConfDir       string
+	PortMapping      bool
+	Bandwidth        bool
+	AllocateInfoPath string
 }
 
 func NewOptions() *Options {
 	return &Options{
-		MTU:         0,
-		HairpinMode: "promiscuous-bridge",
-		AddRule:     true,
-		CniConfDir:  defaultCniConfDir,
-		PortMapping: true,
-		Bandwidth:   false,
+		MTU:              0,
+		HairpinMode:      "promiscuous-bridge",
+		AddRule:          true,
+		CniConfDir:       defaultCniConfDir,
+		PortMapping:      true,
+		Bandwidth:        false,
+		AllocateInfoPath: "",
 	}
 }
 
@@ -32,7 +34,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.CniConfDir, "cni-conf-dir", o.CniConfDir, `--cni-conf-dir string where tke-bridge.conf located`)
 	fs.BoolVar(&o.PortMapping, "port-mapping", o.PortMapping, `--port-mapping bool whether support port-mapping or not`)
 	fs.BoolVar(&o.Bandwidth, "bandwidth", o.Bandwidth, `--bandwidth bool whether support bandwidth or not`)
-
+	fs.StringVar(&o.AllocateInfoPath, "allocateInfoPath", "", "--allocateInfoPath string where the ip allocate info located")
 	return
 }
 
