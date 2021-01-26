@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	log "github.com/golang/glog"
@@ -24,7 +25,8 @@ import (
 )
 
 const (
-	ObjectNameField = "metadata.name"
+	ObjectNameField            = "metadata.name"
+	Pod_CIDR_Allocation_Result = "tke.cloud.tencent.com/pod-cidrs"
 )
 
 func main() {
@@ -69,14 +71,14 @@ func main() {
 				AddFunc: func(obj interface{}) {
 					node, ok := obj.(*v1.Node)
 					if ok {
-						syncPodCidr(node.Spec.PodCIDR, o)
+						syncPodCidr(node, o)
 					}
 				},
 				UpdateFunc: func(oldObj, newObj interface{}) {
 					oldNode, ok1 := oldObj.(*v1.Node)
 					newNode, ok2 := newObj.(*v1.Node)
 					if ok1 && ok2 && oldNode.Spec.PodCIDR != newNode.Spec.PodCIDR {
-						syncPodCidr(newNode.Spec.PodCIDR, o)
+						syncPodCidr(newNode, o)
 					}
 				},
 			}, cache.Indexers{})
@@ -109,35 +111,48 @@ func main() {
 	}
 }
 
-func syncPodCidr(podCidr string, o *Options) error {
-	log.Infof("Sync pod cidr %s", podCidr)
-	if podCidr == "" {
+func syncPodCidr(node *v1.Node, o *Options) error {
+	log.Infof("Sync pod cidr of node %s into config file", node.Name)
+	ipamdAllocationResult, ok := node.Annotations[Pod_CIDR_Allocation_Result]
+
+	if node.Spec.PodCIDR == "" && (!ok || ipamdAllocationResult == "") {
 		log.Warningf("node has no pod cidr assigned, skipped")
 		return nil
 	}
-	_, cidr, err := net.ParseCIDR(podCidr)
-	if err != nil {
-		log.Errorf("Failed to parse cidr %s : %v", podCidr, err)
-		return err
-	}
-	err = generateBridgeConf(cidr, o.MTU, o.HairpinMode, o.CniConfDir)
-	if err != nil {
-		log.Errorf("Failed to generate bridge conf : %v", err)
-		return err
-	}
-
-	if o.AddRule {
-		if cidr.IP.IsLoopback() {
-			log.Warningf("loopback cidr %+v, skipping add rule", cidr)
-		} else {
-			err = ensureRule(cidr)
-			if err != nil {
-				log.Errorf("Failed to ensure rule %+v : %v", cidr, err)
-				return err
+	// 存量节点
+	if node.Spec.PodCIDR != "" {
+		_, cidr, _ := net.ParseCIDR(node.Spec.PodCIDR)
+		err := generateOldBridgeConf(cidr, o.MTU, o.HairpinMode, o.CniConfDir)
+		if err != nil {
+			log.Errorf("Failed to generate bridge conf : %v", err)
+			return err
+		}
+		if o.AddRule {
+			if cidr.IP.IsLoopback() {
+				log.Warningf("loopback cidr %+v, skipping add rule", cidr)
+			} else {
+				err := ensureRule(cidr)
+				if err != nil {
+					log.Errorf("Failed to ensure rule %+v : %v", cidr, err)
+					return err
+				}
 			}
 		}
-	}
+	} else { // 增量节点
+		podCIDRs := make([]*net.IPNet, 0)
 
+		cidrs := strings.Split(ipamdAllocationResult, ",")
+		for _, cidr := range cidrs {
+			_, podCidr, _ := net.ParseCIDR(cidr)
+			podCIDRs = append(podCIDRs, podCidr)
+		}
+
+		err := generateNewBridgeConf(podCIDRs, o.MTU, o.HairpinMode, o.CniConfDir)
+		if err != nil {
+			log.Errorf("Failed to generate bridge conf : %v", err)
+			return err
+		}
+	}
 	return nil
 }
 
