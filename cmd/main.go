@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"reflect"
 	"strings"
 	"time"
 
@@ -77,7 +78,7 @@ func main() {
 				UpdateFunc: func(oldObj, newObj interface{}) {
 					oldNode, ok1 := oldObj.(*v1.Node)
 					newNode, ok2 := newObj.(*v1.Node)
-					if ok1 && ok2 && oldNode.Spec.PodCIDR != newNode.Spec.PodCIDR {
+					if ok1 && ok2 && oldNode.Spec.PodCIDR != newNode.Spec.PodCIDR || !reflect.DeepEqual(oldNode.Annotations, newNode.Annotations) {
 						syncPodCidr(newNode, o)
 					}
 				},
